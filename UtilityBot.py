@@ -11,7 +11,7 @@ scheduler = AsyncIOScheduler()
 async def send_reminder(ctx, message):
     await ctx.send(message)
 
-
+#  scheduler
 @scheduler.scheduled_job('interval', minutes=15)
 async def reminder_task():
-    await send_reminder(ctx, "Time to walk the dog!")
+    await send_reminder(ctx  , "Time to walk the dog!")
