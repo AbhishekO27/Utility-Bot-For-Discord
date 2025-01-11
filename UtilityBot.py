@@ -4,18 +4,25 @@ import cohere
 import requests
 import replicate
 
-# Discord bot token
-DISCORD_BOT_TOKEN =
+from dotenv import load_dotenv
+import os
 
-# Cohere API key
-COHERE_API_KEY = 
-cohere_client = cohere.Client(COHERE_API_KEY)
+load_dotenv()
 
 
 
-REPLICATE_API_KEY = "
-client = replicate.Client(api_token=REPLICATE_API_KEY)
-# Initialize bot
+discord_bot_token = os.getenv("DISCORD_BOT_TOKEN")
+
+
+cohere_api_key = os.getenv("COHERE_API_KEY")
+cohere_client = cohere.Client(cohere_api_key)
+
+
+
+
+replicate_api = os.getenv("REPLICATE_API_KEY")
+client = replicate.Client(api_token=replicate_api)
+
 intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
@@ -29,39 +36,38 @@ async def image(ctx, *, prompt: str):
     await ctx.send("Generating your image... Please wait!")
     
     try:
-        # Replace with the correct model ID (and version ID if necessary)
-        model_id = "stability-ai/stable-diffusion"  # Replace with your model ID
-        # Optional: Add version ID if required, e.g., "your-version-id"
+        
+        model_id = "stability-ai/stable-diffusion" 
 
-        # Debug: Log the prompt and model
+        
         print(f"Prompt: {prompt}")
         print(f"Model: {model_id}")
 
-        # Run the prediction on Replicate
+        
         prediction = client.run(
             model_id,
             input={"prompt": prompt}
         )
 
-        # Debug: Log the prediction response
+        
         print(f"Prediction Response: {prediction}")
 
-        # Send the generated image
+        
         if "output" in prediction:
             await ctx.send(f"Here's your generated image:\n{prediction['output'][0]}")
         else:
             await ctx.send("No output received from the model.")
 
     except replicate.exceptions.ReplicateError as e:
-        # Handle API errors with specific logging
+        
         print(f"ReplicateError: {e}")
         await ctx.send(f"An error occurred while generating the image: {e}")
     except Exception as e:
-        # Handle other unexpected errors
+       
         print(f"Unexpected Error: {e}")
         await ctx.send(f"An unexpected error occurred: {e}")
 
-# AI Chat Command
+
 @bot.event
 async def on_message(message):
     if message.author == bot.user:
@@ -74,7 +80,7 @@ async def on_message(message):
             return
 
         try:
-            # Send the user's message to Cohere and get a response
+           
             response = cohere_client.generate(
                 model="command-xlarge-nightly",
                 prompt=user_input,
@@ -87,4 +93,35 @@ async def on_message(message):
             print(e)
 
     await bot.process_commands(message)
+
+
+@bot.command()
+async def weather(ctx, *, city: str):
+    """Fetch weather for a given city."""
+    try:
+        api_key = os.getenv("WEATHER_API")
+        url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}&units=metric"
+        response = requests.get(url).json()
+
+        if response.get("cod") != 200:
+            await ctx.send(f"City '{city}' not found.")
+            return
+
+        weather_desc = response["weather"][0]["description"]
+        temp = response["main"]["temp"]
+        feels_like = response["main"]["feels_like"]
+        humidity = response["main"]["humidity"]
+
+        weather_report = (
+            f"**Weather in {city.title()}:**\n"
+            f"Description: {weather_desc.capitalize()}\n"
+            f"Temperature: {temp}°C (Feels like {feels_like}°C)\n"
+            f"Humidity: {humidity}%"
+        )
+        await ctx.send(weather_report)
+    except Exception as e:
+        await ctx.send(f"An error occurred: {e}")
+
+
+bot.run(discord_bot_token)
 
